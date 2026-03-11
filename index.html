@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#FAFAFA">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Travel Curator</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+    
+    <style>
+        /* --- PREMIUM UI SYSTEM --- */
+        body { 
+            font-family: 'Pretendard', sans-serif; 
+            background-color: #FAFAFA;
+            color: #111;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+        }
+
+        /* Modal Glass */
+        .glass-modal {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(30px) saturate(200%);
+            -webkit-backdrop-filter: blur(30px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-enter { animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        .tap-active:active { transform: scale(0.96); transition: transform 0.1s; }
+
+        /* Safe Area */
+        .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 20px); }
+        .pt-safe { padding-top: calc(env(safe-area-inset-top) + 20px); }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col overflow-hidden relative selection:bg-indigo-100">
+
+    <header class="fixed top-0 left-0 w-full z-40 px-6 pt-safe flex justify-between items-center pointer-events-none transition-all duration-300">
+        <div class="pointer-events-auto tap-active" onclick="router.home()">
+            <h1 class="text-2xl font-black tracking-tighter text-gray-900 drop-shadow-sm cursor-pointer">
+                TRIP<span class="text-indigo-600">.</span>
+            </h1>
+        </div>
+        <div id="header-badge" class="hidden glass-panel px-3 py-1.5 rounded-full text-[11px] font-bold text-gray-800 shadow-sm pointer-events-auto flex items-center gap-1 animate-enter">
+            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            <span id="badge-text">Paris</span>
+        </div>
+    </header>
+
+    <main id="app" class="flex-1 overflow-y-auto no-scrollbar scroll-smooth pb-32">
+        <div id="initial-loader" class="flex h-full items-center justify-center flex-col gap-4">
+            <div class="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+            <p class="text-xs font-bold text-gray-400 animate-pulse">여행 정보를 불러오는 중...</p>
+        </div>
+    </main>
+
+    <nav class="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-40 w-[88%] max-w-[360px]">
+        <div class="glass-panel rounded-full px-1 py-1 flex justify-between items-center shadow-2xl shadow-indigo-500/10">
+            <button onclick="router.back()" id="btn-back" class="w-14 h-14 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 tap-active transition hidden">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <button onclick="router.home()" class="flex-1 h-14 rounded-full flex flex-col items-center justify-center text-gray-900 tap-active">
+                <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            </button>
+            <button onclick="router.sortByDistance()" class="w-14 h-14 rounded-full flex items-center justify-center text-gray-400 hover:text-indigo-600 tap-active transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            </button>
+        </div>
+    </nav>
+
+    <div id="toast-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+        <div class="glass-modal w-[85%] max-w-sm rounded-[2rem] p-6 text-center transform scale-95 transition-transform duration-300" id="toast-content">
+            <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">GPS 권한 요청</h3>
+            <p class="text-sm text-gray-500 mb-6 leading-relaxed">
+                현재 위치를 기반으로 가까운 장소를 찾으시겠습니까?<br>
+                <span class="text-xs text-gray-400">(거절 시 파리를 기준으로 탐색합니다)</span>
+            </p>
+            <div class="flex gap-3">
+                <button id="toast-cancel" class="flex-1 py-3.5 rounded-xl bg-gray-100 text-gray-600 font-bold text-sm tap-active hover:bg-gray-200 transition">아니요</button>
+                <button id="toast-confirm" class="flex-1 py-3.5 rounded-xl bg-indigo-600 text-white font-bold text-sm tap-active hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition">네, 좋아요</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // ▼▼▼ [설정 영역] 이곳을 반드시 수정하세요 ▼▼▼
+        // ==========================================
+        const CONFIG = {
+            // [중요] 아래 URL을 당신의 Google Apps Script 배포 URL로 교체하십시오.
+            API_URL: 'https://script.google.com/macros/s/AKfycbxbvi5-B87EUXKTah8CnLaLRR8LZiTsw5H8L_BNKtEMVvKILjQi6vG-IBOTqzqw24x4/exec', 
+            
+            // 국가 리스트 및 이미지
+            TARGET_COUNTRIES: ['프랑스', '영국', '이탈리아', '일본', '베트남'],
+            COUNTRY_IMGS: {
+                '프랑스': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80',
+                '영국': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&q=80',
+                '이탈리아': 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=800&q=80',
+                '일본': 'https://images.unsplash.com/photo-1524413840807-0c3cb6fa808d?w=800&q=80',
+                '베트남': 'https://images.unsplash.com/photo-1528127269322-539801943592?w=800&q=80'
+            }
+        };
+
+        // --- GLOBAL STATE ---
+        const STATE = { data: [], country: null, city: null, sourceFilter: 'ALL', category: 'all' };
+
+        // --- ROUTER & LOGIC ---
+        const router = {
+            init: async () => {
+                try {
+                    // Fetch Data from Google Sheets
+                    const response = await fetch(CONFIG.API_URL);
+                    const json = await response.json();
+                    
+                    if (!json || json.length === 0) throw new Error("No Data");
+                    
+                    STATE.data = json;
+                    router.home(); 
+                } catch (error) {
+                    console.error(error);
+                    document.getElementById('app').innerHTML = `
+                        <div class="flex h-full items-center justify-center flex-col gap-4 text-center px-6">
+                            <span class="text-4xl">⚠️</span>
+                            <h3 class="font-bold text-lg">데이터를 불러올 수 없습니다.</h3>
+                            <p class="text-sm text-gray-500">API URL을 확인하거나 잠시 후 다시 시도해주세요.</p>
+                            <button onclick="location.reload()" class="px-6 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold mt-2">새로고침</button>
+                        </div>
+                    `;
+                }
+            },
+            home: () => {
+                STATE.country = null; STATE.city = null;
+                ui.setBadge('');
+                render.countries();
+                ui.toggleBack(false);
+            },
+            selectCountry: (c) => {
+                STATE.country = c;
+                ui.setBadge(c);
+                render.cities();
+                ui.toggleBack(true);
+            },
+            selectCity: (c) => {
+                STATE.city = c;
+                STATE.sourceFilter = 'ALL';
+                STATE.category = 'all';
+                render.spots();
+                ui.toggleBack(true);
+            },
+            setSource: (type) => { STATE.sourceFilter = type; render.spots(); },
+            setCategory: (cat) => { STATE.category = cat; render.spots(); },
+            back: () => {
+                if(STATE.city) router.selectCountry(STATE.country);
+                else router.home();
+            },
+            sortByDistance: () => {
+                ui.showToast((isConfirmed) => {
+                    ui.loader(true);
+                    if(isConfirmed) {
+                        if (!navigator.geolocation) return alert("GPS 권한이 필요합니다.");
+                        navigator.geolocation.getCurrentPosition(pos => {
+                            processDistance(pos.coords.latitude, pos.coords.longitude);
+                        }, () => {
+                            ui.loader(false);
+                            alert("위치 정보를 가져올 수 없습니다. 권한을 확인해주세요.");
+                        });
+                    } else {
+                        // Fallback: Paris
+                        setTimeout(() => processDistance(48.8566, 2.3522), 800);
+                    }
+                });
+
+                function processDistance(lat, lng) {
+                    let targets = STATE.city ? STATE.data.filter(i => i.city === STATE.city) : [...STATE.data];
+                    targets.forEach(item => item._dist = getDistance(lat, lng, item.lat, item.lng));
+                    targets.sort((a, b) => a._dist - b._dist);
+                    render.spotsList(targets, true);
+                    ui.loader(false);
+                    ui.toggleBack(true);
+                    ui.setBadge('Near Me');
+                }
+            }
+        };
+
+        // --- RENDERER (UI Generation) ---
+        const render = {
+            container: document.getElementById('app'),
+
+            countries: () => {
+                const list = CONFIG.TARGET_COUNTRIES; 
+                render.container.innerHTML = `
+                    <div class="px-6 pt-32 pb-10 animate-enter">
+                        <h2 class="text-4xl font-extrabold mb-1 tracking-tight text-gray-900">Where next?</h2>
+                        <p class="text-gray-400 mb-8 font-medium text-sm">큐레이션된 여행지 컬렉션</p>
+                        <div class="grid grid-cols-1 gap-6">
+                            ${list.map(c => `
+                                <div onclick="router.selectCountry('${c}')" class="tap-active relative h-52 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-gray-200 cursor-pointer group">
+                                    <img src="${CONFIG.COUNTRY_IMGS[c]}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 filter brightness-[0.85]">
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                                    <div class="absolute bottom-0 left-0 p-8 w-full flex justify-between items-end">
+                                        <div>
+                                            <h3 class="text-3xl font-bold text-white tracking-tight leading-none">${c}</h3>
+                                            <p class="text-white/80 text-xs mt-2 font-medium">${STATE.data.filter(i=>i.country===c).length} Places</p>
+                                        </div>
+                                        <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/20">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+            },
+
+            cities: () => {
+                const list = [...new Set(STATE.data.filter(i => i.country === STATE.country).map(i => i.city))];
+                render.container.innerHTML = `
+                    <div class="px-6 pt-32 pb-24 animate-enter">
+                        <div class="text-xs font-bold text-gray-400 tracking-widest uppercase mb-2 pl-1">${STATE.country}</div>
+                        <h2 class="text-3xl font-extrabold mb-8 text-gray-900 pl-1">도시 선택</h2>
+                        <div class="space-y-4">
+                            ${list.length > 0 ? list.map(city => `
+                                <div onclick="router.selectCity('${city}')" class="tap-active bg-white rounded-[2rem] p-6 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] flex justify-between items-center border border-gray-100/50 group">
+                                    <div class="flex items-center space-x-4">
+                                        <div class="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-2xl shadow-inner">${getCityEmoji(city)}</div>
+                                        <div>
+                                            <h3 class="text-xl font-bold text-gray-900 tracking-tight">${city}</h3>
+                                            <p class="text-gray-400 text-xs mt-0.5 font-medium">${STATE.data.filter(i => i.city===city).length} Curation</p>
+                                        </div>
+                                    </div>
+                                    <div class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
+                                    </div>
+                                </div>
+                            `).join('') : '<div class="text-center text-gray-400 py-10">등록된 도시가 없습니다.</div>'}
+                        </div>
+                    </div>`;
+            },
+
+            spots: () => {
+                let items = STATE.data.filter(i => i.country === STATE.country && i.city === STATE.city);
+                
+                // [FILTER FIXED] Flexible Source Type Check
+                if (STATE.sourceFilter === 'KR') {
+                    items = items.filter(i => i.source_type && i.source_type.toString().includes('KR'));
+                } else if (STATE.sourceFilter === 'LOCAL') {
+                    items = items.filter(i => i.source_type && (i.source_type.toString().includes('LOCAL') || i.source_type.toString().includes('현지')));
+                }
+
+                if (STATE.category !== 'all') items = items.filter(i => i.category_main === STATE.category);
+                render.spotsList(items, false);
+            },
+
+            spotsList: (items, isDistanceMode) => {
+                const isKR = STATE.sourceFilter === 'KR';
+                const isLocal = STATE.sourceFilter === 'LOCAL';
+
+                // DYNAMIC CATEGORY
+                let contextItems = STATE.data;
+                if(STATE.country) contextItems = contextItems.filter(i => i.country === STATE.country);
+                if(STATE.city) contextItems = contextItems.filter(i => i.city === STATE.city);
+                const dynamicCategories = ['all', ...new Set(contextItems.map(i => i.category_main))].filter(Boolean);
+
+                const filterHtml = isDistanceMode ? 
+                    `<div class="px-6 pt-32 pb-4 animate-enter">
+                        <h2 class="text-2xl font-bold text-gray-900">내 주변 발견</h2>
+                        <p class="text-xs text-gray-500 mt-1">거리순으로 정렬되었습니다.</p>
+                     </div>` :
+                    `<div class="sticky top-0 z-30 px-6 pt-28 pb-4 bg-[#FAFAFA]/95 backdrop-blur-sm transition-all duration-300">
+                        <div class="glass-panel p-1.5 rounded-full flex relative shadow-sm mb-4">
+                            <button onclick="router.setSource('ALL')" class="flex-1 py-3 rounded-full text-[11px] font-bold transition-all ${STATE.sourceFilter==='ALL' ? 'bg-gray-900 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}">All</button>
+                            <button onclick="router.setSource('KR')" class="flex-1 py-3 rounded-full text-[11px] font-bold transition-all ${isKR ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}">🇰🇷 한국인픽</button>
+                            <button onclick="router.setSource('LOCAL')" class="flex-1 py-3 rounded-full text-[11px] font-bold transition-all ${isLocal ? 'bg-orange-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}">🌍 현지인픽</button>
+                        </div>
+                        <div class="flex space-x-2 overflow-x-auto no-scrollbar pb-2">
+                            ${dynamicCategories.map(c => `
+                                <button onclick="router.setCategory('${c}')" class="px-4 py-2 rounded-full text-[11px] font-bold whitespace-nowrap border transition-all active:scale-95 ${STATE.category === c ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-500 border-gray-200 shadow-sm'}">
+                                    ${c === 'all' ? '전체' : c}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>`;
+
+                // [COMPACT UI APPLIED]
+                const listHtml = `
+                    <div class="px-6 pb-32 grid grid-cols-1 gap-6 animate-enter">
+                        ${items.map(item => `
+                            <div class="tap-active relative h-[22rem] rounded-[2rem] overflow-hidden shadow-xl shadow-gray-200/50 group">
+                                <img src="${item.image_url}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" loading="lazy">
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-90"></div>
+                                <div class="absolute top-5 left-5 flex gap-2">
+                                    <span class="px-2.5 py-1 rounded-lg bg-white/20 backdrop-blur-md text-white text-[10px] font-bold border border-white/10 uppercase tracking-wide">${item.category_sub}</span>
+                                    <span class="px-2.5 py-1 rounded-lg ${item.source_type && item.source_type.toString().includes('KR') ?'bg-indigo-500/90':'bg-orange-500/90'} text-white text-[10px] font-bold backdrop-blur-md shadow-lg border border-white/10">${item.source_type && item.source_type.toString().includes('KR') ? 'PICK' : 'LOCAL'}</span>
+                                </div>
+                                ${item._dist ? `<div class="absolute top-5 right-5 px-2.5 py-1 rounded-lg bg-green-500/90 text-white text-[10px] font-bold shadow-lg border border-white/10 backdrop-blur-md">📍 ${(item._dist).toFixed(1)}km</div>` : ''}
+                                
+                                <div class="absolute bottom-0 left-0 w-full p-6 text-white transform translate-y-1 transition-transform duration-300 group-hover:translate-y-0">
+                                    <div class="mb-2 flex flex-wrap gap-1.5">
+                                        ${item.highlights ? item.highlights.slice(0, 2).map(h => `<span class="px-2 py-0.5 rounded-md bg-black/40 backdrop-blur-md text-white text-[10px] font-medium border border-white/10 flex items-center">✨ ${h}</span>`).join('') : ''}
+                                    </div>
+
+                                    <h3 class="text-2xl font-bold leading-tight mb-1 tracking-tight">${item.name}</h3>
+                                    <div class="flex items-center space-x-2 text-xs text-gray-200 font-medium mb-4">
+                                        <span class="text-yellow-400">★ ${item.rating}</span>
+                                        <span class="opacity-60">|</span>
+                                        <span class="opacity-90">${item.price_level}</span>
+                                        <span class="opacity-60">|</span>
+                                        <span class="opacity-90">${item.review_count} 리뷰</span>
+                                    </div>
+                                    <a href="${item.map_url}" target="_blank" class="w-full py-3 rounded-xl bg-white text-black font-bold text-sm hover:bg-gray-100 transition shadow-lg flex justify-center items-center gap-1.5 cursor-pointer tap-active">
+                                        <span>Explore</span>
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                                    </a>
+                                </div>
+                            </div>
+                        `).join('')}
+                        ${items.length === 0 ? '<div class="flex flex-col items-center justify-center py-20 text-gray-300"><span class="text-4xl mb-2">🤔</span><p class="text-sm font-medium">조건에 맞는 장소가 없습니다</p></div>' : ''}
+                    </div>`;
+                render.container.innerHTML = filterHtml + listHtml;
+            }
+        };
+
+        // --- UTILS ---
+        const ui = {
+            setBadge: (text) => {
+                const el = document.getElementById('header-badge');
+                const span = document.getElementById('badge-text');
+                if(text) { span.innerText = text; el.classList.remove('hidden'); }
+                else { el.classList.add('hidden'); }
+            },
+            toggleBack: (show) => {
+                const btn = document.getElementById('btn-back');
+                if(show) btn.classList.remove('hidden');
+                else btn.classList.add('hidden');
+            },
+            loader: (show) => {
+                if(show) {
+                    render.container.innerHTML = '<div class="flex h-[70vh] items-center justify-center flex-col gap-4"><div class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div><p class="text-xs font-bold text-gray-300 animate-pulse">탐색 중...</p></div>';
+                }
+            },
+            showToast: (callback) => {
+                const modal = document.getElementById('toast-modal');
+                const content = document.getElementById('toast-content');
+                const btnYes = document.getElementById('toast-confirm');
+                const btnNo = document.getElementById('toast-cancel');
+
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    content.classList.remove('scale-95');
+                    content.classList.add('scale-100');
+                }, 10);
+
+                const close = (result) => {
+                    modal.classList.add('opacity-0');
+                    content.classList.remove('scale-100');
+                    content.classList.add('scale-95');
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                        callback(result);
+                    }, 300);
+                };
+                btnYes.onclick = () => close(true);
+                btnNo.onclick = () => close(false);
+            }
+        };
+
+        function getDistance(lat1, lon1, lat2, lon2) {
+            if(!lat1 || !lat2) return 9999;
+            const R = 6371; 
+            const dLat = (lat2-lat1)*Math.PI/180;
+            const dLon = (lon2-lon1)*Math.PI/180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function getCityEmoji(city) {
+            const map = {'파리':'🥐', '니스':'🌊', '도쿄':'🗼', '오사카':'🐙', '다낭':'🥥', '호이안':'🏮', '런던':'🇬🇧', '로마':'🍝', '포지타노':'🍋', '뉴욕':'🗽'};
+            return map[city] || '🏙️';
+        }
+
+        // --- START ---
+        router.init();
+
+    </script>
+</body>
+</html>
