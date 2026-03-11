@@ -110,8 +110,7 @@
         // ▼▼▼ [설정 영역] 이곳을 반드시 수정하세요 ▼▼▼
         // ==========================================
         const CONFIG = {
-            // [중요] 아래 URL을 당신의 Google Apps Script 배포 URL로 교체하십시오.
-            API_URL: 'https://script.google.com/macros/s/AKfycbxbvi5-B87EUXKTah8CnLaLRR8LZiTsw5H8L_BNKtEMVvKILjQi6vG-IBOTqzqw24x4/exec', 
+            API_URL: 'https://script.google.com/macros/s/AKfycbybqqQ3THQd1zdlXWQMSSIiIoqMXrG5fGJSxfzah7rU3gOQe3fReN0Iu-oAhTZ7EQ3M/exec', 
             
             // 국가 리스트 및 이미지
             TARGET_COUNTRIES: ['프랑스', '영국', '이탈리아', '일본', '베트남'],
@@ -304,12 +303,12 @@
                         </div>
                     </div>`;
 
-                // [COMPACT UI APPLIED]
+                // [FIXED] 이미지 URL 처리를 parseImageUrl() 함수로 감싸주었습니다.
                 const listHtml = `
                     <div class="px-6 pb-32 grid grid-cols-1 gap-6 animate-enter">
                         ${items.map(item => `
                             <div class="tap-active relative h-[22rem] rounded-[2rem] overflow-hidden shadow-xl shadow-gray-200/50 group">
-                                <img src="${item.image_url}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" loading="lazy">
+                                <img src="${parseImageUrl(item.image_url)}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" loading="lazy">
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-90"></div>
                                 <div class="absolute top-5 left-5 flex gap-2">
                                     <span class="px-2.5 py-1 rounded-lg bg-white/20 backdrop-blur-md text-white text-[10px] font-bold border border-white/10 uppercase tracking-wide">${item.category_sub}</span>
@@ -344,6 +343,21 @@
         };
 
         // --- UTILS ---
+        
+        // [NEW] 구글 드라이브 URL을 썸네일 전용 URL로 변환하는 함수
+        function parseImageUrl(url) {
+            if (!url) return 'https://via.placeholder.com/800x600?text=No+Image';
+            
+            if (url.includes('drive.google.com/uc')) {
+                const idMatch = url.match(/id=([^&]+)/);
+                if (idMatch && idMatch[1]) {
+                    // 해상도(sz=w1000) 옵션을 주어 화질 손실 없이 엑스박스를 방지합니다.
+                    return `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w1000`;
+                }
+            }
+            return url;
+        }
+
         const ui = {
             setBadge: (text) => {
                 const el = document.getElementById('header-badge');
