@@ -124,7 +124,8 @@
         };
 
         // --- GLOBAL STATE ---
-        const STATE = { data: [], country: null, city: null, sourceFilter: 'ALL', category: 'all' };
+        // [수정1] 위치 캐싱을 위해 userLat, userLng 추가
+        const STATE = { data: [], country: null, city: null, sourceFilter: 'ALL', category: 'all', userLat: null, userLng: null };
 
         // --- ROUTER & LOGIC ---
         const router = {
@@ -175,20 +176,43 @@
                 if(STATE.city) router.selectCountry(STATE.country);
                 else router.home();
             },
+            // [수정3] GPS 고속 탐색 로직 및 캐시 활용
             sortByDistance: () => {
+                // 이미 동의하여 위치를 알고 있다면 바로 정렬 (0.1초 컷)
+                if (STATE.userLat && STATE.userLng) {
+                    ui.loader(true);
+                    setTimeout(() => processDistance(STATE.userLat, STATE.userLng), 50);
+                    return;
+                }
+
                 ui.showToast((isConfirmed) => {
                     ui.loader(true);
                     if(isConfirmed) {
-                        if (!navigator.geolocation) return alert("GPS 권한이 필요합니다.");
-                        navigator.geolocation.getCurrentPosition(pos => {
-                            processDistance(pos.coords.latitude, pos.coords.longitude);
-                        }, () => {
+                        if (!navigator.geolocation) {
                             ui.loader(false);
-                            alert("위치 정보를 가져올 수 없습니다. 권한을 확인해주세요.");
-                        });
+                            return alert("GPS 권한이 필요합니다.");
+                        }
+                        
+                        // [핵심] GPS 탐색 옵션 (초고속 스캔)
+                        const geoOptions = {
+                            enableHighAccuracy: false, 
+                            maximumAge: 10 * 60 * 1000, 
+                            timeout: 5000 
+                        };
+
+                        navigator.geolocation.getCurrentPosition(pos => {
+                            STATE.userLat = pos.coords.latitude;
+                            STATE.userLng = pos.coords.longitude;
+                            processDistance(STATE.userLat, STATE.userLng);
+                        }, (err) => {
+                            ui.loader(false);
+                            console.warn("GPS Error:", err);
+                            alert("위치 정보를 가져올 수 없어 기본 위치(파리)로 대체합니다.");
+                            processDistance(48.8566, 2.3522); // 에러시 파리 기준 즉시 실행
+                        }, geoOptions);
                     } else {
-                        // Fallback: Paris
-                        setTimeout(() => processDistance(48.8566, 2.3522), 800);
+                        // 거절시 강제 딜레이(800ms) 제거, 즉시 실행
+                        processDistance(48.8566, 2.3522);
                     }
                 });
 
@@ -262,7 +286,6 @@
             spots: () => {
                 let items = STATE.data.filter(i => i.country === STATE.country && i.city === STATE.city);
                 
-                // [FILTER FIXED] Flexible Source Type Check
                 if (STATE.sourceFilter === 'KR') {
                     items = items.filter(i => i.source_type && i.source_type.toString().includes('KR'));
                 } else if (STATE.sourceFilter === 'LOCAL') {
@@ -277,18 +300,18 @@
                 const isKR = STATE.sourceFilter === 'KR';
                 const isLocal = STATE.sourceFilter === 'LOCAL';
 
-                // DYNAMIC CATEGORY
                 let contextItems = STATE.data;
                 if(STATE.country) contextItems = contextItems.filter(i => i.country === STATE.country);
                 if(STATE.city) contextItems = contextItems.filter(i => i.city === STATE.city);
                 const dynamicCategories = ['all', ...new Set(contextItems.map(i => i.category_main))].filter(Boolean);
 
+                // [디자인 수정] 상단 헤더와의 여백(레드존)을 대폭 줄이기 위해 기존 pt-28을 pt-20으로 수정
                 const filterHtml = isDistanceMode ? 
-                    `<div class="px-6 pt-32 pb-4 animate-enter">
+                    `<div class="px-6 pt-24 pb-4 animate-enter">
                         <h2 class="text-2xl font-bold text-gray-900">내 주변 발견</h2>
                         <p class="text-xs text-gray-500 mt-1">거리순으로 정렬되었습니다.</p>
                      </div>` :
-                    `<div class="sticky top-0 z-30 px-6 pt-28 pb-4 bg-[#FAFAFA]/95 backdrop-blur-sm transition-all duration-300">
+                    `<div class="sticky top-0 z-30 px-6 pt-20 pb-4 bg-[#FAFAFA]/95 backdrop-blur-sm transition-all duration-300">
                         <div class="glass-panel p-1.5 rounded-full flex relative shadow-sm mb-4">
                             <button onclick="router.setSource('ALL')" class="flex-1 py-3 rounded-full text-[11px] font-bold transition-all ${STATE.sourceFilter==='ALL' ? 'bg-gray-900 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}">All</button>
                             <button onclick="router.setSource('KR')" class="flex-1 py-3 rounded-full text-[11px] font-bold transition-all ${isKR ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}">🇰🇷 한국인픽</button>
@@ -303,7 +326,6 @@
                         </div>
                     </div>`;
 
-                // [FIXED] 이미지 URL 처리를 parseImageUrl() 함수로 감싸주었습니다.
                 const listHtml = `
                     <div class="px-6 pb-32 grid grid-cols-1 gap-6 animate-enter">
                         ${items.map(item => `
@@ -344,14 +366,11 @@
 
         // --- UTILS ---
         
-        // [NEW] 구글 드라이브 URL을 썸네일 전용 URL로 변환하는 함수
         function parseImageUrl(url) {
             if (!url) return 'https://via.placeholder.com/800x600?text=No+Image';
-            
             if (url.includes('drive.google.com/uc')) {
                 const idMatch = url.match(/id=([^&]+)/);
                 if (idMatch && idMatch[1]) {
-                    // 해상도(sz=w1000) 옵션을 주어 화질 손실 없이 엑스박스를 방지합니다.
                     return `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w1000`;
                 }
             }
@@ -389,12 +408,14 @@
                 }, 10);
 
                 const close = (result) => {
+                    // [수정2] 모달 애니메이션 닫히기를 기다리지 않고 즉시 로직 실행 처리
+                    callback(result); 
+                    
                     modal.classList.add('opacity-0');
                     content.classList.remove('scale-100');
                     content.classList.add('scale-95');
                     setTimeout(() => {
                         modal.classList.add('hidden');
-                        callback(result);
                     }, 300);
                 };
                 btnYes.onclick = () => close(true);
@@ -413,7 +434,7 @@
 
         function getCityEmoji(city) {
             const map = {'파리':'🥐', '니스':'🌊', '도쿄':'🗼', '오사카':'🐙', '다낭':'🥥', '호이안':'🏮', '런던':'🇬🇧', '로마':'🍝', '포지타노':'🍋', '뉴욕':'🗽'};
-            return map[city] || '🏙️';
+            return map[city] || '📍';
         }
 
         // --- START ---
